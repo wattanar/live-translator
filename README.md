@@ -1,46 +1,68 @@
 # Live Audio Translator
 
-A native-feel CLI application for macOS (optimized for M1) that performs real-time audio translation using local AI models.
+A native-feel CLI application for macOS (optimized for M1) and Windows that performs real-time audio translation using local AI models.
 
 ## Features
 
 - **Local Inference**: Uses `faster-whisper` for high-performance, on-device audio processing.
-- **System Audio Capture**: Supports capturing audio directly from system output (via BlackHole) or microphone.
+- **System Audio Capture**: Supports capturing audio directly from system output (via BlackHole on macOS or Stereo Mix/VoiceMeeter on Windows) or microphone.
 - **Thai Language Support**: Can translate any supported language into English or Thai.
 - **Modern CLI UI**: Features a live-updating dashboard with translation history.
-- **M1 Optimized**: Configured for Apple Silicon with hardware acceleration.
+- **Cross-Platform**: Works on macOS (optimized for Apple Silicon) and Windows.
 
 ## Prerequisites
 
+### macOS
 1.  **Python 3.10**: Recommended for compatibility with AI libraries.
 2.  **FFmpeg**: Required for audio processing.
     ```bash
     brew install ffmpeg
     ```
-3.  **BlackHole (Optional)**: Required for capturing system output (e.g., from browser or video player).
+3.  **BlackHole (Optional)**: Required for capturing system output.
     ```bash
     brew install blackhole-16ch
     ```
 
+### Windows
+1.  **Python 3.10**: Install from [python.org](https://www.python.org/downloads/).
+2.  **FFmpeg**: Install via `choco install ffmpeg` or download from [ffmpeg.org](https://ffmpeg.org/download.html) and add to PATH.
+3.  **Loopback Device (Optional)**: Enable "Stereo Mix" in Sound Settings or install [VB-Audio VoiceMeeter](https://vb-audio.com/Voicemeeter/).
+
 ## Installation
 
 1.  Clone the repository and navigate to the directory.
-2.  The setup script will handle the virtual environment and dependencies.
+2.  **macOS**:
+    ```bash
+    cd live_translator
+    python3 -m venv venv
+    ./venv/bin/pip install -r requirements.txt
+    ```
+3.  **Windows**:
+    ```cmd
+    cd live_translator
+    setup.bat
+    ```
 
 ## Usage
 
+### macOS
 Run the application using the provided script:
-
 ```bash
-cd live_translator
 ./run.sh [options]
+```
+
+### Windows
+Run the application using the provided batch file:
+```cmd
+run.bat [options]
 ```
 
 ### Common Commands
 
 **1. Default (Listen to System Audio & Translate to English)**
 ```bash
-./run.sh
+./run.sh  # macOS
+run.bat   # Windows
 ```
 
 **2. Listen to Japanese System Audio & Translate to Thai**
@@ -90,14 +112,20 @@ If you find the translation is not accurate enough, try the following:
     ```
 4.  **Hardware Note**: Running larger models (`medium`, `large-v3`) will consume more RAM and CPU/GPU resources. On an M1 Mac, `small` is usually the "sweet spot" for real-time performance and high accuracy.
 
-### Setting up System Audio Capture (BlackHole)
+### Setting up System Audio Capture
 
-To translate audio coming from your computer (YouTube, Zoom, etc.):
+#### macOS (BlackHole)
 1.  Open **Audio MIDI Setup**.
 2.  Create a **Multi-Output Device**.
 3.  Select both your **Speakers** and **BlackHole 16ch**.
 4.  Set your system sound output to this new Multi-Output Device.
 5.  Run the app; it will automatically detect and use BlackHole.
+
+#### Windows (Stereo Mix)
+1.  Right-click the speaker icon in the taskbar and select **Sound Settings**.
+2.  Go to **Input** and click **Manage sound devices**.
+3.  If **Stereo Mix** is disabled, enable it.
+4.  Run the app; it will automatically detect and use Stereo Mix if available.
 
 ## License
 

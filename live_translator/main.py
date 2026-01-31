@@ -2,6 +2,7 @@ import time
 import signal
 import sys
 import argparse
+import platform
 import numpy as np
 import sounddevice as sd
 from rich.console import Console
@@ -28,7 +29,12 @@ def list_audio_devices():
             table.add_row(str(i), dev['name'], f"{dev['max_input_channels']}/{dev['max_output_channels']}")
     
     console.print(table)
-    console.print("\n[yellow]To use system output, select a loopback device like 'BlackHole'.[/yellow]")
+    if platform.system() == "Darwin":
+        console.print("\n[yellow]To use system output, select a loopback device like 'BlackHole'.[/yellow]")
+    elif platform.system() == "Windows":
+        console.print("\n[yellow]To use system output, enable 'Stereo Mix' in Sound Settings or use 'VB-Audio VoiceMeeter'.[/yellow]")
+    else:
+        console.print("\n[yellow]To use system output, ensure you have a loopback device configured.[/yellow]")
 
 class LiveTranslatorApp:
     def __init__(self, device_index=None, source_lang=None, target_lang="en", model_size="small", chunk_duration=7):
@@ -115,11 +121,16 @@ class LiveTranslatorApp:
             finally:
                 self.recorder.stop_recording()
 
-def find_blackhole_index():
+def find_loopback_device_index():
     devices = sd.query_devices()
+    # Common loopback device keywords
+    keywords = ["BlackHole", "Stereo Mix", "VoiceMeeter", "Loopback", "Virtual Audio"]
+    
     for i, dev in enumerate(devices):
-        if "BlackHole" in dev['name'] and dev['max_input_channels'] > 0:
-            return i
+        if dev['max_input_channels'] > 0:
+            for kw in keywords:
+                if kw.lower() in dev['name'].lower():
+                    return i
     return None
 
 if __name__ == "__main__":
@@ -139,11 +150,12 @@ if __name__ == "__main__":
 
     device_idx = args.device
     if device_idx is None:
-        device_idx = find_blackhole_index()
+        device_idx = find_loopback_device_index()
         if device_idx is not None:
-            console.print(f"[green]Automatically selected BlackHole (index {device_idx}) for system audio.[/green]")
+            loopback_name = sd.query_devices(device_idx)['name']
+            console.print(f"[green]Automatically selected {loopback_name} (index {device_idx}) for system audio.[/green]")
         else:
-            console.print("[yellow]No BlackHole device found. Using default microphone.[/yellow]")
+            console.print("[yellow]No loopback device found. Using default microphone.[/yellow]")
 
     try:
         app = LiveTranslatorApp(
