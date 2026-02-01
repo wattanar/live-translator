@@ -3,7 +3,7 @@
 This document provides essential information for AI agents working on this repository.
 
 ## Project Overview
-A real-time, cross-platform audio translation CLI for macOS (optimized for M1) and Windows. It utilizes `faster-whisper` for local inference and `deep-translator` as a fallback for specific languages like Thai. The goal is to provide a low-latency, "native-feel" translation experience directly in the terminal.
+A real-time, cross-platform audio translation CLI for macOS (optimized for M1) and Windows. It utilizes `faster-whisper` for local inference and `deep-translator` as a fallback for specific languages like Thai. The goal is to provide a low-latency, "native-feel" translation experience directly in the terminal using a Rich-based TUI.
 
 ## Build and Environment
 
@@ -15,27 +15,27 @@ A real-time, cross-platform audio translation CLI for macOS (optimized for M1) a
   - Always use the interpreter from these locations for script execution.
 
 ### Dependencies
-- Core: `faster-whisper`, `sounddevice`, `numpy`, `rich`, `deep-translator`, `sentencepiece`.
-- System: `ffmpeg` (required for audio decoding).
-- macOS: `BlackHole` (optional, for system audio loopback).
-- Windows: `Stereo Mix` or `VoiceMeeter` (optional, for system audio loopback).
-
-### Entry Points
-- **macOS**: `live_translator/run.sh`
-- **Windows**: `live_translator/run.bat`
-- **Direct**: `python live_translator/main.py` (after activating venv).
+- **Runtime**: `faster-whisper`, `sounddevice`, `numpy`, `rich`, `deep-translator`, `sentencepiece`.
+- **System**: `ffmpeg` (required for audio decoding).
+- **macOS**: `BlackHole` (optional, for system audio loopback).
+- **Windows**: `Stereo Mix` or `VoiceMeeter` (optional, for system audio loopback).
+- **Development**: `pytest`, `ruff`.
 
 ### Essential Commands
-- **Install Dependencies**: 
-  - macOS: `./live_translator/venv/bin/pip install -r live_translator/requirements.txt`
-  - Windows: `.\live_translator\venv\Scripts\pip install -r live_translator\requirements.txt`
+- **Install Runtime Deps**: 
+  - macOS: `./live_translator/setup.sh`
+  - Windows: `.\live_translator\setup.bat`
+- **Install Dev Tools**: `pip install pytest ruff` (inside venv).
 - **Run Application**: 
   - macOS: `./live_translator/run.sh`
   - Windows: `live_translator\run.bat`
 - **List Audio Devices**: `./live_translator/run.sh --list-devices`
 - **Linting**: `./live_translator/venv/bin/ruff check live_translator/`
+- **Format Code**: `./live_translator/venv/bin/ruff format live_translator/`
 - **Testing**: `./live_translator/venv/bin/pytest`
 - **Run Single Test**: `./live_translator/venv/bin/pytest tests/test_audio.py::test_chunk_processing`
+- **Testing with Coverage**: `pytest --cov=live_translator tests/`
+- **Fast Linting**: `ruff check .`
 
 ## Code Style Guidelines
 
@@ -45,7 +45,7 @@ A real-time, cross-platform audio translation CLI for macOS (optimized for M1) a
 - **M1 Optimization**: Use `compute_type="int8"` for Whisper on Apple Silicon to balance speed and accuracy without requiring a discrete GPU.
 
 ### 2. Formatting and Naming
-- **Standards**: Adhere to PEP 8.
+- **Standards**: Adhere to PEP 8. Use `ruff` for linting and formatting.
 - **Naming**: 
   - Functions/Variables: `snake_case`.
   - Classes: `PascalCase`.
@@ -80,21 +80,22 @@ Avoid wildcard imports (`from module import *`).
 ### `audio_utils.py` (Audio Capture)
 - Handles low-level interaction with `sounddevice`.
 - Uses a non-blocking `InputStream` callback to push raw audio frames into a `queue.Queue`.
-- Buffers data to provide consistent chunks (e.g., 7-second windows) to the engine.
+- Buffers data in `self.buffer` (numpy array) to provide consistent chunks (e.g., 7-second windows) to the engine.
 
 ### `translator_engine.py` (AI Logic)
-- Encapsulates `WhisperModel`.
+- Encapsulates `WhisperModel` from `faster-whisper`.
 - Logic for `task="translate"` (to English) vs `task="transcribe"` (local language).
-- Handles the "Thai Fallback" logic using `GoogleTranslator` from `deep-translator`.
-- Maintains a small context buffer (`previous_text`) to improve translation consistency across chunks.
+- Handles the "Thai Fallback" logic: if target is `th`, it transcribes locally then uses `GoogleTranslator` from `deep-translator`.
+- Maintains a context buffer (`previous_text`) to improve translation consistency across chunks.
 
 ### `main.py` (CLI & Orchestration)
 - Handles CLI arguments using `argparse`.
+- Displays a configuration summary (table) on startup to confirm active settings.
 - Orchestrates the TUI (Terminal User Interface) using `rich.live` and `rich.layout`.
-- Contains the main processing loop that bridges the recorder and the engine.
+- Contains the main processing loop: `get_audio_chunk()` -> `translate_audio()` -> `live.update()`.
 
 ## Concurrency and Threading
-- **Audio Thread**: The `sounddevice` callback runs in a dedicated high-priority thread. Keep this callback minimal (just copying data to a queue).
+- **Audio Thread**: The `sounddevice` callback runs in a dedicated high-priority thread managed by PortAudio. Keep this callback minimal (just copying data to a queue).
 - **Main Thread**: Handles the CLI loop, model inference (which is CPU/GPU intensive), and TUI updates.
 - **Synchronization**: Use `queue.Queue` for thread-safe communication between the audio callback and the main loop.
 
@@ -108,29 +109,35 @@ Avoid wildcard imports (`from module import *`).
 ### Modifying the UI
 - Use `rich.layout` to define sections.
 - Ensure the `Live` context manager in `main.py` is properly handled during exceptions to prevent terminal corruption.
-- Test UI responsiveness on different terminal sizes.
+- Use `refresh_per_second=2` to keep the UI responsive without over-consuming CPU.
+- When adding new panels, ensure they handle text wrapping correctly to avoid breaking the layout on small terminals.
+- Prefer `Panel` with `expand=True` for history displays to ensure they fill the available space.
+- The "Current Translation" panel uses centered, bold text to maximize readability (simulating a larger font).
 
 ## Testing Guidelines
-- Since real-time audio is hard to test deterministically, use `unittest.mock` to simulate:
+- Create tests in the `tests/` directory at the project root.
+- Use `unittest.mock` to simulate:
   - Audio input queues with pre-recorded `numpy` arrays.
   - Model transcription results to verify TUI state updates.
 - Focus tests on `AudioRecorder.get_audio_chunk` logic and `TranslatorEngine.translate_audio` state transitions.
 
 ## Model Management and Quantization
-- **Quantization**: Always use `int8` for CPU-based inference to reduce memory footprint and latency. On machines with NVIDIA GPUs, `float16` with `device="cuda"` is preferred.
-- **VAD (Voice Activity Detection)**: The project uses the `Silero VAD` model integrated into `faster-whisper`. Configuration is passed via `vad_parameters` in `TranslatorEngine.translate_audio`.
-- **Initial Prompts**: To maintain context between audio chunks, the last 200 characters of the `previous_text` are passed as an `initial_prompt` to the Whisper model. This helps with proper noun consistency and sentence completion.
+- **Quantization**: 
+  - **CPU**: Uses `int8` by default. This is highly optimized for Apple Silicon (M1/M2) and modern x86 CPUs.
+  - **GPU**: Uses `float16` by default when `--engine cuda` is specified. This is the preferred mode for NVIDIA GPUs to maximize throughput and minimize latency.
+- **VAD (Voice Activity Detection)**: Uses the `Silero VAD` model integrated into `faster-whisper`. Configured via `vad_parameters` in `TranslatorEngine.translate_audio`.
+- **Initial Prompts**: The last 200 characters of `previous_text` are passed as an `initial_prompt` to Whisper to maintain context.
 
 ## Environment Variables
-- `OMP_NUM_THREADS`: Set to `4` (default in `run.sh`/`run.bat`) to prevent Whisper from consuming all CPU cores, which can cause TUI stuttering.
-- `PYTHONPATH`: Ensure the root directory is in the path if running scripts from subdirectories.
+- `OMP_NUM_THREADS`: Set to `4` (default in `run.sh`/`run.bat`) to prevent Whisper from consuming all CPU cores, which causes TUI lag.
+- `PYTHONPATH`: Ensure the root directory is in the path.
 
 ## Cursor and Copilot Rules
 *No project-specific .cursorrules or .github/copilot-instructions.md were found. Follow the guidelines in this document for all AI-assisted development.*
 
 ## Common Pitfalls
-- **Microphone Permissions**: On macOS, terminals often need explicit permission in System Settings > Privacy & Security > Microphone.
-- **PortAudio Errors**: Ensure no other application is locking the audio device at the same sample rate. If you see "Device unavailable", check for competing recording software.
-- **Memory Usage**: Whisper `medium` or `large` models can consume 2GB+ of RAM. Monitor memory during long sessions, especially on 8GB RAM machines.
-- **VAD Hangs**: If `vad_filter=True` is used, very quiet environments might result in empty segments; handle these gracefully to avoid UI flickering.
-- **Encoding Issues**: Always ensure text being printed to the terminal is UTF-8 encoded to support international characters.
+- **Microphone Permissions**: On macOS, terminals need permission in System Settings > Privacy & Security > Microphone.
+- **PortAudio Errors**: Ensure no other application is locking the audio device.
+- **Memory Usage**: Whisper `medium` or `large` models can consume 2GB+ of RAM.
+- **VAD Hangs**: In silent environments, VAD might return empty segments; handle these to avoid UI flickering.
+- **Encoding**: Ensure UTF-8 for all terminal output to support international characters.

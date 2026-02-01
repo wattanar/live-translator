@@ -7,7 +7,7 @@ A native-feel CLI application for macOS (optimized for M1) and Windows that perf
 - **Local Inference**: Uses `faster-whisper` for high-performance, on-device audio processing.
 - **System Audio Capture**: Supports capturing audio directly from system output (via BlackHole on macOS or Stereo Mix/VoiceMeeter on Windows) or microphone.
 - **Thai Language Support**: Can translate any supported language into English or Thai.
-- **Modern CLI UI**: Features a live-updating dashboard with translation history.
+- **Modern CLI UI**: Features a live-updating dashboard with translation history and a configuration summary on startup.
 - **Cross-Platform**: Works on macOS (optimized for Apple Silicon) and Windows.
 
 ## Prerequisites
@@ -34,8 +34,8 @@ A native-feel CLI application for macOS (optimized for M1) and Windows that perf
 2.  **macOS**:
     ```bash
     cd live_translator
-    python3 -m venv venv
-    ./venv/bin/pip install -r requirements.txt
+    chmod +x setup.sh
+    ./setup.sh
     ```
 3.  **Windows**:
     ```cmd
@@ -70,9 +70,9 @@ run.bat   # Windows
 ./run.sh --lang ja --target th
 ```
 
-**3. Higher Accuracy (using 'medium' model)**
+**3. Higher Accuracy & Performance (using 'medium' model on GPU)**
 ```bash
-./run.sh --model medium --chunk 10
+./run.sh --model medium --engine cuda --chunk 10
 ```
 
 **4. Translate Microphone input instead of System Audio**
@@ -89,7 +89,8 @@ Then run with the index (e.g., index 0):
 
 - `--target th`: Translate into Thai (default is English).
 - `--lang <code>`: Specify source language (e.g., `ja`, `zh`, `ko`) to skip auto-detection.
-- `--model <size>`: Whisper model size. Options: `tiny`, `base`, `small` (default), `medium`, `large-v3`.
+- `--model <size>`: Whisper model size. Options: `tiny`, `base`, `small`, `medium` (default), `large-v3`.
+- `--engine <device>`: AI inference device. `cpu` (default) or `cuda` (for NVIDIA GPUs).
 - `--chunk <seconds>`: Duration of audio to process at once. Default is `7`.
 - `--list-devices`: Show available audio input devices.
 - `--device <index>`: Manually select an audio input device index.
@@ -98,19 +99,19 @@ Then run with the index (e.g., index 0):
 
 If you find the translation is not accurate enough, try the following:
 
-1.  **Use a Larger Model**: The `small` or `medium` models provide significantly better accuracy than `base`.
+1.  **Use a Larger Model**: The `medium` or `large-v3` models provide significantly better accuracy.
     ```bash
-    ./run.sh --model small
+    ./run.sh --model medium
     ```
 2.  **Increase Chunk Duration**: Longer chunks (e.g., 7-10 seconds) allow the model to hear full sentences before translating.
     ```bash
-    ./run.sh --model small --chunk 8
+    ./run.sh --model medium --chunk 8
     ```
 3.  **Specify Source Language**: Skipping the auto-detection phase by providing the language code reduces errors.
     ```bash
     ./run.sh --lang ja --target th
     ```
-4.  **Hardware Note**: Running larger models (`medium`, `large-v3`) will consume more RAM and CPU/GPU resources. On an M1 Mac, `small` is usually the "sweet spot" for real-time performance and high accuracy.
+4.  **Hardware Note**: Running larger models (`medium`, `large-v3`) will consume more RAM and CPU/GPU resources. On an M1 Mac, `medium` (default) is the recommended "sweet spot" for real-time performance and high accuracy.
 
 ### Setting up System Audio Capture
 
@@ -126,6 +127,21 @@ If you find the translation is not accurate enough, try the following:
 2.  Go to **Input** and click **Manage sound devices**.
 3.  If **Stereo Mix** is disabled, enable it.
 4.  Run the app; it will automatically detect and use Stereo Mix if available.
+
+## Development
+
+### Running Tests
+Tests are located in the `tests/` directory at the project root.
+```bash
+./live_translator/venv/bin/pip install pytest
+./live_translator/venv/bin/pytest
+```
+
+### Linting
+```bash
+./live_translator/venv/bin/pip install ruff
+./live_translator/venv/bin/ruff check .
+```
 
 ## License
 
