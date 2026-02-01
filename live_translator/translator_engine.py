@@ -2,7 +2,7 @@ import os
 from faster_whisper import WhisperModel
 
 class TranslatorEngine:
-    def __init__(self, model_size="small", device="cpu", compute_type="int8"):
+    def __init__(self, model_size="medium", device="cpu", compute_type="int8"):
         """
         Initializes the Whisper model for translation.
         """

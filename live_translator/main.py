@@ -37,9 +37,13 @@ def list_audio_devices():
         console.print("\n[yellow]To use system output, ensure you have a loopback device configured.[/yellow]")
 
 class LiveTranslatorApp:
-    def __init__(self, device_index=None, source_lang=None, target_lang="en", model_size="small", chunk_duration=7):
+    def __init__(self, device_index=None, source_lang=None, target_lang="en", model_size="medium", chunk_duration=7, engine_device="cpu"):
         self.recorder = AudioRecorder(chunk_duration=chunk_duration, device_index=device_index)
-        self.engine = TranslatorEngine(model_size=model_size)
+        # On GPU, float16 is usually faster/better, on CPU int8 is optimized for M1/x86
+        compute_type = "float16" if engine_device == "cuda" else "int8"
+        self.engine = TranslatorEngine(model_size=model_size, device=engine_device, compute_type=compute_type)
+        self.model_size = model_size
+        self.engine_device = engine_device
         self.engine.set_target_lang(target_lang)
         self.history = []
         self.max_history = 10
@@ -50,7 +54,7 @@ class LiveTranslatorApp:
     def generate_layout(self, current_text, language):
         layout = Layout()
         layout.split(
-            Layout(name="history", ratio=3),
+            Layout(name="history", ratio=2),
             Layout(name="current", ratio=1)
         )
         
@@ -70,12 +74,20 @@ class LiveTranslatorApp:
             src_str = "Auto" if not language else language.upper()
             
         target_str = self.target_lang.upper()
+        
+        # Make font look bigger by using bold, high contrast, and centering
+        display_text = current_text or "Listening..."
+        styled_text = f"[bold yellow]{display_text}[/bold yellow]"
+        
+        from rich.align import Align
+        centered_text = Align.center(styled_text, vertical="middle")
             
         layout["current"].update(
             Panel(
-                f"[bold green]{current_text or 'Listening...'}[/bold green]", 
+                centered_text, 
                 title=f"Live Translation ({src_str} → {target_str})", 
-                border_style="green"
+                border_style="green",
+                padding=(1, 2)
             )
         )
         return layout
@@ -86,6 +98,16 @@ class LiveTranslatorApp:
     def run(self):
         signal.signal(signal.SIGINT, self.signal_handler)
         
+        # Display settings
+        settings_table = Table(title="Configuration", show_header=False, border_style="cyan")
+        settings_table.add_row("Model Size", self.model_size)
+        settings_table.add_row("Engine Device", self.engine_device)
+        settings_table.add_row("Source Lang", self.source_lang or "Auto-detect")
+        settings_table.add_row("Target Lang", self.target_lang)
+        settings_table.add_row("Chunk Duration", f"{self.recorder.chunk_size / self.recorder.sample_rate}s")
+        settings_table.add_row("Device Index", str(self.recorder.device_index))
+        
+        console.print(settings_table)
         console.print("[bold cyan]Starting Live Audio Translator...[/bold cyan]")
         console.print("Press Ctrl+C to stop.")
         
@@ -94,7 +116,7 @@ class LiveTranslatorApp:
         current_text = ""
         last_lang = ""
         
-        with Live(self.generate_layout("", ""), refresh_per_second=4, screen=True) as live:
+        with Live(self.generate_layout("", ""), refresh_per_second=2, screen=True) as live:
             try:
                 while self.running:
                     chunk = self.recorder.get_audio_chunk()
@@ -139,8 +161,10 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=int, help="Audio device index to use")
     parser.add_argument("--lang", type=str, help="Source language code (e.g., 'ja', 'zh', 'fr'). Default is auto-detect.")
     parser.add_argument("--target", type=str, default="en", help="Target language code ('en' or 'th'). Default is 'en'.")
-    parser.add_argument("--model", type=str, default="small", choices=["tiny", "base", "small", "medium", "large-v3"], 
-                        help="Whisper model size. 'small' or 'medium' are recommended for better accuracy.")
+    parser.add_argument("--model", type=str, default="medium", choices=["tiny", "base", "small", "medium", "large-v3"], 
+                        help="Whisper model size. 'medium' is default and recommended for accuracy.")
+    parser.add_argument("--engine", type=str, default="cpu", choices=["cpu", "cuda"],
+                        help="Device to run AI inference on. Use 'cuda' for NVIDIA GPUs.")
     parser.add_argument("--chunk", type=int, default=7, help="Audio chunk duration in seconds. Longer chunks provide better context.")
     args = parser.parse_args()
 
@@ -163,7 +187,8 @@ if __name__ == "__main__":
             source_lang=args.lang, 
             target_lang=args.target,
             model_size=args.model,
-            chunk_duration=args.chunk
+            chunk_duration=args.chunk,
+            engine_device=args.engine
         )
         app.run()
     except KeyboardInterrupt:
