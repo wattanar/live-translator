@@ -80,7 +80,7 @@ Avoid wildcard imports (`from module import *`).
 ### `audio_utils.py` (Audio Capture)
 - Handles low-level interaction with `sounddevice`.
 - Uses a non-blocking `InputStream` callback to push raw audio frames into a `queue.Queue`.
-- Buffers data in `self.buffer` (numpy array) to provide consistent chunks (e.g., 7-second windows) to the engine.
+- Buffers data in `self.buffer` (numpy array) to provide consistent chunks (e.g., 10-second windows) to the engine.
 
 ### `translator_engine.py` (AI Logic)
 - Encapsulates `WhisperModel` from `faster-whisper`.
@@ -104,7 +104,7 @@ Avoid wildcard imports (`from module import *`).
 ### Adding a New Source Language
 1. Verify if `faster-whisper` supports the language code.
 2. Update the `TranslatorEngine.translate_audio` method if special handling or a different fallback is needed.
-3. Test with a 7-10 second audio clip to ensure the VAD (Voice Activity Detection) filter works correctly.
+3. Test with a 10-15 second audio clip to ensure the VAD (Voice Activity Detection) filter works correctly.
 
 ### Modifying the UI
 - Use `rich.layout` to define sections.

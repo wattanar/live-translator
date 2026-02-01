@@ -91,7 +91,7 @@ Then run with the index (e.g., index 0):
 - `--lang <code>`: Specify source language (e.g., `ja`, `zh`, `ko`) to skip auto-detection.
 - `--model <size>`: Whisper model size. Options: `tiny`, `base`, `small`, `medium` (default), `large-v3`.
 - `--engine <device>`: AI inference device. `cpu` (default) or `cuda` (for NVIDIA GPUs).
-- `--chunk <seconds>`: Duration of audio to process at once. Default is `7`.
+- `--chunk <seconds>`: Duration of audio to process at once. Default is `10`.
 - `--list-devices`: Show available audio input devices.
 - `--device <index>`: Manually select an audio input device index.
 
@@ -103,9 +103,9 @@ If you find the translation is not accurate enough, try the following:
     ```bash
     ./run.sh --model medium
     ```
-2.  **Increase Chunk Duration**: Longer chunks (e.g., 7-10 seconds) allow the model to hear full sentences before translating.
+2.  **Increase Chunk Duration**: Longer chunks (e.g., 10-15 seconds) allow the model to hear full sentences before translating.
     ```bash
-    ./run.sh --model medium --chunk 8
+    ./run.sh --model medium --chunk 15
     ```
 3.  **Specify Source Language**: Skipping the auto-detection phase by providing the language code reduces errors.
     ```bash

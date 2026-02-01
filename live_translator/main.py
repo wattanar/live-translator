@@ -37,7 +37,7 @@ def list_audio_devices():
         console.print("\n[yellow]To use system output, ensure you have a loopback device configured.[/yellow]")
 
 class LiveTranslatorApp:
-    def __init__(self, device_index=None, source_lang=None, target_lang="en", model_size="medium", chunk_duration=7, engine_device="cpu"):
+    def __init__(self, device_index=None, source_lang=None, target_lang="en", model_size="medium", chunk_duration=10, engine_device="cpu"):
         self.recorder = AudioRecorder(chunk_duration=chunk_duration, device_index=device_index)
         # On GPU, float16 is usually faster/better, on CPU int8 is optimized for M1/x86
         compute_type = "float16" if engine_device == "cuda" else "int8"
@@ -61,7 +61,7 @@ class LiveTranslatorApp:
         # History Table
         table = Table(show_header=False, box=None, expand=True)
         for h in self.history[-self.max_history:]:
-            table.add_row(f"[white]{h}[/white]")
+            table.add_row(f"• [white]{h}[/white]")
             
         layout["history"].update(
             Panel(table, title="Translation History", border_style="blue")
@@ -165,7 +165,7 @@ if __name__ == "__main__":
                         help="Whisper model size. 'medium' is default and recommended for accuracy.")
     parser.add_argument("--engine", type=str, default="cpu", choices=["cpu", "cuda"],
                         help="Device to run AI inference on. Use 'cuda' for NVIDIA GPUs.")
-    parser.add_argument("--chunk", type=int, default=7, help="Audio chunk duration in seconds. Longer chunks provide better context.")
+    parser.add_argument("--chunk", type=int, default=10, help="Audio chunk duration in seconds. Longer chunks provide better context.")
     args = parser.parse_args()
 
     if args.list_devices:

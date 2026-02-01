@@ -4,7 +4,7 @@ import queue
 import sys
 
 class AudioRecorder:
-    def __init__(self, sample_rate=16000, chunk_duration=3, device_index=None):
+    def __init__(self, sample_rate=16000, chunk_duration=10, device_index=None):
         """
         sample_rate: 16000Hz is what Whisper expects.
         chunk_duration: Duration of each audio chunk to process in seconds.
